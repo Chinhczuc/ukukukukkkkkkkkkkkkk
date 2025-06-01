@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Trang chủ - Gia Tộc GTA RP</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <!-- Nên dùng thêm Bootstrap hoặc CSS framework để giao diện chuyên nghiệp hơn -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <style>
+    /* Một số CSS nâng cấp nhẹ nếu bạn chưa có */
+    .navbar { display: flex; justify-content: space-between; align-items: center; background: #20232a; color: #fff; padding: 10px 30px; }
+    .navbar a { color: #fff; margin: 0 10px; text-decoration: none; font-weight: 500; }
+    .navbar a:hover { text-decoration: underline; }
+    .banner { background: url('/images/banner.jpg') center/cover no-repeat, #141618; color: #fff; padding: 60px 0 40px 0; text-align: center; border-radius: 0 0 16px 16px; }
+    .button-main { background: #5865F2; color: #fff; border: none; padding: 12px 30px; font-size: 1.1em; border-radius: 7px; cursor: pointer; margin-top: 20px;}
+    .button-main:hover { background: #4051b5; }
+    .container { max-width: 700px; margin: 40px auto; background: #23272f; padding: 30px; border-radius: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);}
+    @media (max-width:600px) {
+      .container { padding: 10px; }
+      .banner { padding: 30px 0 20px 0; }
+    }
+    #clanOwnerTools { margin-top: 30px; text-align: center; }
+    #createClanModal { display:none; position:fixed; z-index:1000; left:0; top:0; width:100vw; height:100vh; background:#000a; }
+    #createClanModal .modal-content { background: #222; color:#fff; max-width: 400px; margin: 100px auto; padding: 32px 28px; border-radius: 14px; position: relative; }
+    #createClanModal input, #createClanModal textarea { width:100%; margin-bottom: 12px; border-radius: 4px; border: 1px solid #444; background: #191c22; color: #fff; padding: 8px; }
+    #createClanModal button { margin-top: 4px;}
+    #createClanModal .close { position: absolute; right: 14px; top: 10px; cursor:pointer; font-size: 26px; color:#aaa; }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <div>
+      <a href="/">Trang chủ</a>
+      <a href="/clans">Danh sách Gia tộc</a>
+      <a href="/ranking">Bảng xếp hạng</a>
+    </div>
+    <div id="auth-buttons"></div>
+  </div>
+  <div class="banner">
+    <h1>Chào mừng đến với Hệ Thống Quản Lý Gia Tộc GTA FiveM Roleplay</h1>
+    <p>Quản lý thành viên, hoạt động, cấp bậc minh bạch!</p>
+    <a href="/register"><button class="button-main">Tham gia gia nhập</button></a>
+  </div>
+  <div class="container">
+    <h3>Tổng quan hệ thống</h3>
+    <ul>
+      <li>Số lượng gia tộc: <span id="clan-count">...</span></li>
+      <li>Số lượng thành viên: <span id="member-count">...</span></li>
+      <li>Thông báo: <span style="color:yellow">Beta v1, thử nghiệm!</span></li>
+    </ul>
+
+    <!-- CLAN OWNER TOOLS: chỉ hiển thị với clan_owner -->
+    <div id="clanOwnerTools" style="display:none;">
+      <button onclick="showCreateClanModal()" class="btn btn-primary">+ Tạo Clan mới</button>
+    </div>
+  </div>
+
+  <!-- Modal tạo clan -->
+  <div id="createClanModal">
+    <div class="modal-content">
+      <span class="close" onclick="closeCreateClanModal()">&times;</span>
+      <h4 class="mb-3">Tạo Clan mới</h4>
+      <input type="text" id="newClanName" placeholder="Tên clan" maxlength="32" required />
+      <textarea id="newClanDesc" placeholder="Mô tả clan (tối đa 200 ký tự)" maxlength="200"></textarea>
+      <input type="text" id="newClanBanner" placeholder="Link banner (không bắt buộc)" />
+      <button onclick="submitCreateClan()" class="btn btn-success">Tạo clan</button>
+      <button onclick="closeCreateClanModal()" class="btn btn-secondary">Đóng</button>
+    </div>
+  </div>
+
+  <div style="margin:40px;text-align:center;">
+    <button onclick="toggleTheme()" class="btn btn-outline-dark">Đổi theme</button>
+  </div>
+  <script>
+    // Lấy số lượng clan và member
+    fetch('/api/clans').then(r=>r.json()).then(d=>{
+      document.getElementById('clan-count').innerText = d.clans.length;
+      let allPromises = d.clans.map(c=>fetch('/api/clan/'+c.id).then(r=>r.json()));
+      Promise.all(allPromises).then(arr=>{
+        let total = arr.reduce((sum,clan)=>sum+(clan.members?clan.members.length:0),0);
+        document.getElementById('member-count').innerText = total;
+      });
+    });
+    // Navbar login/logout
+    fetch('/api/me').then(r=>r.json()).then(data=>{
+      if(data.loggedIn) {
+        document.getElementById('auth-buttons').innerHTML =
+          `Chào, <b>${data.name}</b> | <a href="/logout">Đăng xuất</a>`;
+        // Nếu là clan_owner thì hiển thị nút tạo clan
+        if(data.role === 'clan_owner') {
+          document.getElementById('clanOwnerTools').style.display = '';
+        }
+      } else {
+        document.getElementById('auth-buttons').innerHTML =
+          `<a href="/auth/discord">
+            <img src="https://cdn.jsdelivr.net/gh/Chinhczuc/discord-login-btn/discord.svg"
+            style="height:24px;vertical-align:middle;">
+            Đăng nhập Discord
+          </a>`;
+      }
+    });
+
+    // Đổi theme
+    function toggleTheme(){
+      document.body.classList.toggle('light');
+      localStorage.setItem('theme', document.body.classList.contains('light') ? 'light' : '');
+    }
+    window.onload = function(){
+      if(localStorage.getItem('theme')==='light') document.body.classList.add('light');
+    }
+
+    // Modal tạo clan
+    function showCreateClanModal(){
+      document.getElementById('createClanModal').style.display = 'block';
+    }
+    function closeCreateClanModal(){
+      document.getElementById('createClanModal').style.display = 'none';
+      document.getElementById('newClanName').value = '';
+      document.getElementById('newClanDesc').value = '';
+      document.getElementById('newClanBanner').value = '';
+    }
+    function submitCreateClan(){
+      const name = document.getElementById('newClanName').value.trim();
+      const description = document.getElementById('newClanDesc').value.trim();
+      const banner = document.getElementById('newClanBanner').value.trim();
+      if (!name || !description) {
+        alert('Vui lòng nhập đầy đủ tên và mô tả clan!');
+        return;
+      }
+      fetch('/api/clan', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ name, description, banner })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if(data.success){
+          alert('Tạo clan thành công!');
+          closeCreateClanModal();
+          window.location.href = '/clans';
+        } else {
+          alert('Lỗi: ' + (data.error || 'Không thể tạo clan'));
+        }
+      });
+    }
+  </script>
+</body>
+</html>

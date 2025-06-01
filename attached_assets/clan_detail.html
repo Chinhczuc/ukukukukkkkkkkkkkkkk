@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chi tiết Gia tộc</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <!-- Đề xuất: Thêm Bootstrap để giao diện đẹp hơn -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css">
+  <style>
+    .clan-banner {
+      width: 100%;
+      max-height: 200px;
+      object-fit: cover;
+      border-radius: 12px;
+      margin-bottom: 18px;
+      background: #333;
+    }
+    .clan-section { margin-bottom: 28px; }
+    .member-list li { margin-bottom: 6px; }
+    .announce-list li { margin-bottom: 6px; background: #252d33; color: #fff; padding: 8px 14px; border-radius: 5px;}
+    .announce-list { padding-left:0; list-style: none;}
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <div>
+      <a href="/">Trang chủ</a>
+      <a href="/clans">Danh sách Gia tộc</a>
+    </div>
+    <div id="auth-buttons"></div>
+  </div>
+  <div class="container" id="clan-detail">
+    Đang tải...
+  </div>
+  <script>
+    const id = window.location.pathname.split('/').pop();
+    fetch('/api/clan/' + id).then(r=>r.json()).then(data=>{
+      if (!data.success)
+        return document.getElementById('clan-detail').innerText = "Không tìm thấy gia tộc!";
+      let clan = data.clan;
+      let html = '';
+      if(clan.banner) {
+        html += `<img class="clan-banner" src="${clan.banner}" alt="Banner Clan" onerror="this.style.display='none'">`;
+      }
+      html += `<h2 class="mb-3">${clan.name}</h2>
+        <p class="mb-4">${clan.description||''}</p>
+        <div class="clan-section">
+          <h4>Thành viên</h4>
+          <ul class="member-list">${data.members.map(m=>`
+            <li>${m.name} <span class="badge bg-${m.role==='clan_owner'?'warning text-dark':m.role==='admin'?'primary':'secondary'}">${m.role||'Thành viên'}</span></li>
+          `).join('')}</ul>
+        </div>
+        <div class="clan-section">
+          <h4>Thông báo</h4>
+          <ul class="announce-list">${(data.announcements||[]).length
+            ? data.announcements.map(a=>`<li>${a.content} <span class="badge bg-light text-dark">${(a.created_at||'').replace('T',' ').slice(0,16)}</span></li>`).join('')
+            : '<li>Chưa có thông báo nào.</li>'}</ul>
+        </div>`;
+      document.getElementById('clan-detail').innerHTML = html;
+    });
+
+    fetch('/api/me').then(r=>r.json()).then(data=>{
+      if(data.loggedIn) {
+        document.getElementById('auth-buttons').innerHTML =
+          `Chào, <b>${data.name}</b> | <a href="/logout">Đăng xuất</a>`;
+      } else {
+        document.getElementById('auth-buttons').innerHTML =
+          `<a href="/auth/discord"><img src="https://cdn.jsdelivr.net/gh/Chinhczuc/discord-login-btn/discord.svg" style="height:24px;vertical-align:middle;"> Đăng nhập Discord</a>`;
+      }
+    });
+  </script>
+</body>
+</html>
